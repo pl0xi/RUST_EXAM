@@ -1,22 +1,18 @@
 use std::io;
 use std::collections::HashMap;
-pub fn count_words(contents: String) -> io::Result<usize> {
+pub fn count_words(contents: String) -> Option<usize> {
     // Split the String into words
     let words: Vec<&str> = contents.split_whitespace().collect();
 
-  /*  // Check for any non-whitespace characters if found
-    if contents.chars().any(|c| !c.is_whitespace()) {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid characters found"));
-    }
-*/
-
     // Count the words
-    let count = words.len();
+    if(words.len() == 0) {
+        return None;
+    }
 
-    Ok(count)
+    Some(words.len())
 }
 
-pub fn common_word_finder(contents: String) -> io::Result<HashMap<String, i32>> {
+pub fn common_word_finder(contents: String) -> Option<HashMap<String, i32>> {
     // Split the contents into words
     let words: Vec<&str> = contents.split_whitespace().collect();
 
@@ -35,5 +31,28 @@ pub fn common_word_finder(contents: String) -> io::Result<HashMap<String, i32>> 
         }
     }
 
-    Ok(word_map)
+    if(word_map.len() == 0) {
+        return None;
+    }
+
+    Some(word_map)
+}
+
+pub fn concorde_finder(contents : String, min: usize, max: usize) -> Option<HashMap<String, usize>> {
+    // // Split the contents into words
+    let words: Vec<&str> = contents.split_whitespace().collect();
+
+    let mut con = HashMap::new();
+
+    for (index, word) in words.iter().enumerate() {
+        if(index > min) {
+            for concorde_word in words.clone().iter().take(index + max).skip(index-min){
+                *con.entry(concorde_word.to_lowercase()).or_insert(0) += 1;
+            }
+        }
+    }
+    if(con.len() == 0) {
+        return None;
+    }
+    Some(con)
 }
