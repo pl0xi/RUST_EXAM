@@ -18,7 +18,11 @@ fn main() {
 
         match perform_action(&input) {
             Ok(_) => continue,
-            Err(_) => break,
+            Err(TextAnalysisError::QuitCommand) => break,
+            Err(err) => {
+                eprintln!("Error: {:?}", err);
+                break;
+            }
         }
     }
 }
@@ -40,44 +44,43 @@ fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
             println!("Contents: \n{:?}", contents);
         }
         "count" => {
-            let count_result = count_words(contents.clone());
+            let count_result = count_words(&contents)?;
             let count = match count_result {
-                Ok(count) => count,
-                Err(err) => {
-                    eprintln!("Error counting words: {}", err);
-                    return (Err(TextAnalysisError::WordCountError));
+                Some(count) => count,
+                None => {
+                    println!("No words found");
+                    return Ok(());
                 }
             };
             println!("Count: {count}");
         }
         "common" => {
-            let common_words_result = common_word_finder(contents.clone());
+            let common_words_result = common_word_finder(&contents)?;
             match common_words_result {
-                Ok(common_words) => println!("Common Words: {:?}", common_words),
-                Err(err) => {
-                    eprintln!("Error finding common words: {}", err);
-                    return Err(TextAnalysisError::CommonWordError);
+                Some(common_words) => println!("Common Words: {:?}", common_words),
+                None => { println!("No common words found")
                 }
             }
 
         }
         "concorde" => {
-            let concorde_result = concorde_finder(contents.clone(), 2, 2);
-            match concorde_result {
-                Ok(concorde) => {
-                    for (word, count) in concorde.iter() {
+            match concorde_finder(&contents, 2, 2) {
+                Ok(Some(concorde_result)) => {
+                    for (word, count) in concorde_result.iter() {
                         println!("{}: {}", word, count)
                     }
                 }
+                Ok(None) => {
+                    println!("Concordance is empty");
+                }
                 Err(err) => {
-                    eprintln!("Error finding concordance: {}", err);
-                    return Err(TextAnalysisError::ConcordanceError);
+                    eprintln!("Error: {:?}", err);
                 }
             }
         }
         "quit" | "q" => {
             println!("Shutting down.");
-            return Err(TextAnalysisError::FileReadError);
+            return Err(TextAnalysisError::QuitCommand);
         }
 
         _ => println!("Unknown command"),

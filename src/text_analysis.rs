@@ -1,18 +1,19 @@
-use std::io;
 use std::collections::HashMap;
-pub fn count_words(contents: String) -> Option<usize> {
+use crate::errors::TextAnalysisError;
+
+pub fn count_words(contents: &str) -> Result<Option<usize>, TextAnalysisError> {
     // Split the String into words
     let words: Vec<&str> = contents.split_whitespace().collect();
 
     // Count the words
-    if(words.len() == 0) {
-        return None;
+    if words.is_empty() {
+        return Ok(None);
     }
 
-    Some(words.len())
+    Ok(Some(words.len()))
 }
 
-pub fn common_word_finder(contents: String) -> Option<HashMap<String, i32>> {
+pub fn common_word_finder(contents: &str) -> Result<Option<HashMap<String, i32>>, TextAnalysisError> {
     // Split the contents into words
     let words: Vec<&str> = contents.split_whitespace().collect();
 
@@ -23,7 +24,7 @@ pub fn common_word_finder(contents: String) -> Option<HashMap<String, i32>> {
     for word in words.iter() {
         let word_string = word.to_string();
         // Check if the word is already in the map
-        if(word_map.contains_key(&word_string)) {
+        if word_map.contains_key(&word_string) {
             let count = word_map.get_mut(&word_string).unwrap();
             *count += 1;
         } else {
@@ -31,28 +32,30 @@ pub fn common_word_finder(contents: String) -> Option<HashMap<String, i32>> {
         }
     }
 
-    if(word_map.len() == 0) {
-        return None;
+    if word_map.is_empty() {
+        return Ok(None);
     }
 
-    Some(word_map)
+    Ok(Some(word_map))
 }
 
-pub fn concorde_finder(contents : String, min: usize, max: usize) -> Option<HashMap<String, usize>> {
-    // // Split the contents into words
+pub fn concorde_finder(contents: &str, min: usize, max: usize) -> Result<Option<HashMap<String, usize>>, TextAnalysisError> {
+    // Split the contents into words
     let words: Vec<&str> = contents.split_whitespace().collect();
 
-    let mut con = HashMap::new();
+    let mut concordance = HashMap::new();
 
     for (index, word) in words.iter().enumerate() {
-        if(index > min) {
-            for concorde_word in words.clone().iter().take(index + max).skip(index-min){
-                *con.entry(concorde_word.to_lowercase()).or_insert(0) += 1;
+        if index >= min {
+            for concorde_word in words.iter().take(index + max).skip(index - min) {
+                *concordance.entry(concorde_word.to_lowercase().to_string()).or_insert(0) += 1;
             }
         }
     }
-    if(con.len() == 0) {
-        return None;
+
+    if concordance.is_empty() {
+        return Ok(None);
     }
-    Some(con)
+
+    Ok(Some(concordance))
 }
