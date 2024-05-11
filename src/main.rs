@@ -30,6 +30,8 @@ fn main() {
 fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
     // File path to the text file
     let file_path = "test.txt";
+
+    // The ownership of the String is transferred to 'contents'
     let contents = match fs::read_to_string(file_path) {
         Ok(contents) => contents,
         Err(err) => {
@@ -44,6 +46,9 @@ fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
             println!("Contents: \n{:?}", contents);
         }
         "count" => {
+            // count_words borrows contents, without taking ownership of the data.
+            // This is done with &contents.
+            // The data is therefore accessible to other parts of the program.
             let count_result = count_words(&contents)?;
             let count = match count_result {
                 Some(count) => count,
@@ -55,6 +60,7 @@ fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
             println!("Count: {count}");
         }
         "common" => {
+            // common_word_finder borrows contents.
             let common_words_result = common_word_finder(&contents)?;
             match common_words_result {
                 Some(common_words) => println!("Common Words: {:?}", common_words),
@@ -64,6 +70,7 @@ fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
 
         }
         "concorde" => {
+            // concorde_finder borrows contents.
             match concorde_finder(&contents, 2, 2) {
                 Ok(Some(concorde_result)) => {
                     for (word, count) in concorde_result.iter() {

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use crate::errors::TextAnalysisError;
 
+// This function uses a string slice, which is a borrowed reference to a String.
+// It is used to pass data without transferring ownership.
+// String slice is indicated with &str.
 pub fn count_words(contents: &str) -> Result<Option<usize>, TextAnalysisError> {
     // Split the String into words
     let words: Vec<&str> = contents.split_whitespace().collect();
