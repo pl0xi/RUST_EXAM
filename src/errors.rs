@@ -7,4 +7,4 @@ pub enum TextAnalysisError {
     QuitCommand,
 }
 
-type TextAnalysisResult<T> = Result<T, TextAnalysisError>;
+pub type TextAnalysisResult<T> = Result<T, TextAnalysisError>;

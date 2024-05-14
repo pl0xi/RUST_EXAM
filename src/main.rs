@@ -3,11 +3,9 @@ mod errors;
 
 use std::io;
 use std::fs;
-use std::io::Read;
-use text_analysis::count_words;
-use text_analysis::common_word_finder;
-use text_analysis::concorde_finder;
+use text_analysis::{CountWords, CommonWordFinder, ConcordanceFinder};
 use crate::errors::TextAnalysisError;
+use crate::text_analysis::{TextAnalysis};
 
 fn main() {
     println!("Enter a command (type 'quit' or 'q' to exit):");
@@ -49,29 +47,44 @@ fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
             // count_words borrows contents, without taking ownership of the data.
             // This is done with &contents.
             // The data is therefore accessible to other parts of the program.
-            let count_result = count_words(&contents)?;
+            let count_word_fn = CountWords {
+                contents
+            };
+            let count_result = count_word_fn.get_result();
+
             let count = match count_result {
-                Some(count) => count,
-                None => {
+                Ok(Some(count)) => count,
+                Ok(None) => {
                     println!("No words found");
                     return Ok(());
-                }
+                },
+                Err(_err) => return Err(TextAnalysisError::WordCountError)
             };
             println!("Count: {count}");
         }
         "common" => {
             // common_word_finder borrows contents.
-            let common_words_result = common_word_finder(&contents)?;
+            let common_words_fn = CommonWordFinder {
+                contents
+            };
+            let common_words_result = common_words_fn.get_result();
             match common_words_result {
-                Some(common_words) => println!("Common Words: {:?}", common_words),
-                None => { println!("No common words found")
-                }
+                Ok(Some(common_words)) => println!("Common Words: {:?}", common_words),
+                Ok(None) =>  println!("No common words found"),
+                Err(_err) => return Err(TextAnalysisError::CommonWordError)
             }
 
         }
         "concorde" => {
             // concorde_finder borrows contents.
-            match concorde_finder(&contents, 2, 2) {
+            let concorde_fn = ConcordanceFinder {
+                contents,
+                min: 2,
+                max: 2
+            };
+
+            let concorde_finder_result = concorde_fn.get_result();
+            match concorde_finder_result{
                 Ok(Some(concorde_result)) => {
                     for (word, count) in concorde_result.iter() {
                         println!("{}: {}", word, count)
@@ -80,9 +93,7 @@ fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
                 Ok(None) => {
                     println!("Concordance is empty");
                 }
-                Err(err) => {
-                    eprintln!("Error: {:?}", err);
-                }
+                Err(err) => return Err(TextAnalysisError::ConcordanceError)
             }
         }
         "quit" | "q" => {
