@@ -1,20 +1,38 @@
 use std::collections::HashMap;
-use crate::errors::{TextAnalysisError, TextAnalysisResult};
+use std::sync::Arc;
+use crate::errors::TextAnalysisError;
 
 pub type TextAnalysisResultType<T> = Result<T, TextAnalysisError>;
 
 pub struct CountWords {
-    pub contents: String
+    pub contents: Arc<String>
+}
+
+impl CountWords {
+    pub fn new (contents: Arc<String>) -> Self {
+        CountWords {contents}
+    }
 }
 
 pub struct CommonWordFinder {
-    pub contents: String
+    pub contents: Arc<String>
+}
+
+impl CommonWordFinder {
+    pub fn new (contents: Arc<String>) -> Self {
+        CommonWordFinder {contents}
+    }
 }
 
 pub struct ConcordanceFinder {
-    pub contents: String,
+    pub contents: Arc<String>,
     pub min: usize,
     pub max: usize
+}
+impl ConcordanceFinder {
+    pub fn new (contents: Arc<String>, min: usize, max: usize) -> Self {
+        ConcordanceFinder {contents, min, max}
+    }
 }
 
 pub trait TextAnalysis<T> {

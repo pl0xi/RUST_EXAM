@@ -4,6 +4,7 @@ pub enum TextAnalysisError {
     WordCountError,
     CommonWordError,
     ConcordanceError,
+    FailedToJoinThreadError,
     QuitCommand,
 }
 

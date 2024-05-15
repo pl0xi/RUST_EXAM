@@ -1,55 +1,62 @@
 mod text_analysis;
 mod errors;
 
-use std::io;
+use std::{io, thread};
+use std::collections::HashMap;
 use std::fs;
+use std::sync::Arc;
 use text_analysis::{CountWords, CommonWordFinder, ConcordanceFinder};
 use crate::errors::TextAnalysisError;
-use crate::text_analysis::{TextAnalysis};
+use crate::text_analysis::{TextAnalysis, TextAnalysisResultType};
 
 fn main() {
-    println!("Enter a command (type 'quit' or 'q' to exit):");
+    println!("Enter pathfile for textfile:");
 
-    loop {
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("Failed to read line");
+    // File path to the text file
+    let mut file_path = String::new();
+    io::stdin().read_line(&mut file_path).expect("Failed to read line");
 
-        match perform_action(&input) {
-            Ok(_) => continue,
-            Err(TextAnalysisError::QuitCommand) => break,
-            Err(err) => {
-                eprintln!("Error: {:?}", err);
-                break;
+    // The ownership of the String is transferred to 'contents'
+    match read_file_contents(file_path.trim()) {
+        Ok(contents) => {
+            let contents = Arc::new(contents);
+            loop {
+                println!("Enter a command (type 'quit' or 'q' to exit):");
+                let mut input = String::new();
+                io::stdin().read_line(&mut input).expect("Failed to read line");
+
+                match perform_action(&input, &contents) {
+                    Ok(_) => continue,
+                    Err(TextAnalysisError::QuitCommand) => break,
+                    Err(err) => {
+                        eprintln!("Error: {:?}", err);
+                        break;
+                    }
+                }
             }
         }
+        Err(err) => eprintln!("Error reading file: {:?}", err)
     }
 }
 
-fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
-    // File path to the text file
-    let file_path = "test.txt";
+fn read_file_contents(file_path: &str) -> Result<String, TextAnalysisError> {
+    match fs::read_to_string(file_path) {
+        Ok(contents) => Ok(contents),
+        Err(_err) => Err(TextAnalysisError::FileReadError)
+    }
+}
 
-    // The ownership of the String is transferred to 'contents'
-    let contents = match fs::read_to_string(file_path) {
-        Ok(contents) => contents,
-        Err(err) => {
-            eprintln!("Error reading file: {}", err);
-            return Err(TextAnalysisError::FileReadError);
-        }
-    };
-
+fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalysisError> {
     match input.trim().to_lowercase().as_str() {
         "contents" => {
             // Read the contents of the file
-            println!("Contents: \n{:?}", contents);
+            println!("Contents: \n{:?}", Arc::clone(&contents));
         }
         "count" => {
             // count_words borrows contents, without taking ownership of the data.
             // This is done with &contents.
             // The data is therefore accessible to other parts of the program.
-            let count_word_fn = CountWords {
-                contents
-            };
+            let count_word_fn = CountWords::new(Arc::clone(&contents));
             let count_result = count_word_fn.get_result();
 
             let count = match count_result {
@@ -64,9 +71,7 @@ fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
         }
         "common" => {
             // common_word_finder borrows contents.
-            let common_words_fn = CommonWordFinder {
-                contents
-            };
+            let common_words_fn = CommonWordFinder::new(Arc::clone(&contents));
             let common_words_result = common_words_fn.get_result();
             match common_words_result {
                 Ok(Some(common_words)) => println!("Common Words: {:?}", common_words),
@@ -77,11 +82,7 @@ fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
         }
         "concorde" => {
             // concorde_finder borrows contents.
-            let concorde_fn = ConcordanceFinder {
-                contents,
-                min: 2,
-                max: 2
-            };
+            let concorde_fn = ConcordanceFinder::new(Arc::clone(&contents), 2, 2);
 
             let concorde_finder_result = concorde_fn.get_result();
             match concorde_finder_result{
@@ -93,15 +94,66 @@ fn perform_action (input: &str) -> Result<(), TextAnalysisError> {
                 Ok(None) => {
                     println!("Concordance is empty");
                 }
-                Err(err) => return Err(TextAnalysisError::ConcordanceError)
+                Err(_err) => return Err(TextAnalysisError::ConcordanceError)
             }
+        }
+        "all" => {
+            let count_word_fn = CountWords::new(Arc::clone(&contents));
+            let count_thread_job = thread::spawn(move || -> Result<TextAnalysisResultType<Option<String>>, TextAnalysisError> {
+                let count_result = count_word_fn.get_result();
+                Ok(count_result)
+            });
+            let common_words_fn = CommonWordFinder::new(Arc::clone(&contents));
+            let common_thread_job = thread::spawn(move || -> Result<TextAnalysisResultType<Option<HashMap<String, i32>>>, TextAnalysisError> {
+                let common_result = common_words_fn.get_result();
+                Ok(common_result)
+            });
+
+            let concorde_fn = ConcordanceFinder::new(Arc::clone(&contents), 2, 2);
+            let concorde_thread_job = thread::spawn(move || -> Result<TextAnalysisResultType<Option<HashMap<String, usize>>>, TextAnalysisError> {
+                let concorde_finder_result = concorde_fn.get_result();
+                Ok(concorde_finder_result)
+            });
+
+            match count_thread_job.join().unwrap() {
+                Ok(result) => match result {
+                    Ok(Some(count)) => println!("Count: {}", count),
+                    Ok(None) => println!("No words found"),
+                    Err(_err) => return Err(TextAnalysisError::WordCountError),
+                },
+                Err(_err) => return Err(TextAnalysisError::FailedToJoinThreadError),
+            }
+
+            match common_thread_job.join().unwrap() {
+                Ok(result) => match result {
+                    Ok(Some(common)) => println!("Common words: {:?}", common),
+                    Ok(None) => println!("No words found"),
+                    Err(_err) => return Err(TextAnalysisError::CommonWordError)
+                },
+                Err(_err) => return Err(TextAnalysisError::FailedToJoinThreadError)
+            }
+
+            match concorde_thread_job.join().unwrap() {
+                Ok(result) => match result {
+                    Ok(Some(concorde_result)) => {
+                        for (word, count) in concorde_result.iter() {
+                            println!("{}: {}", word, count)
+                        }
+                    }
+                    Ok(None) => {
+                        println!("Concordance is empty");
+                    }
+                    Err(_err) => return Err(TextAnalysisError::ConcordanceError)
+                },
+                Err(_err) => return Err(TextAnalysisError::FailedToJoinThreadError)
+            }
+
         }
         "quit" | "q" => {
             println!("Shutting down.");
             return Err(TextAnalysisError::QuitCommand);
         }
-
-        _ => println!("Unknown command"),
+        _ => {}
     }
     Ok(())
 }
