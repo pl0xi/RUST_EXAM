@@ -7,5 +7,3 @@ pub enum TextAnalysisError {
     FailedToJoinThreadError,
     QuitCommand,
 }
-
-pub type TextAnalysisResult<T> = Result<T, TextAnalysisError>;

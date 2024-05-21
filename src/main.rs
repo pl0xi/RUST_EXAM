@@ -16,10 +16,10 @@ fn main() {
     let mut file_path = String::new();
     io::stdin().read_line(&mut file_path).expect("Failed to read line");
 
-    // The ownership of the String is transferred to 'contents'
+    // The ownership of the String returned by read_file_contents is transferred to 'contents'
     match read_file_contents(file_path.trim()) {
         Ok(contents) => {
-            let contents = Arc::new(contents);
+            let contents = Arc::new(contents); // Arc allows multiple threads to share ownership of the contents
             loop {
                 println!("Enter a command (type 'quit' or 'q' to exit):");
                 let mut input = String::new();
@@ -53,8 +53,8 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
             println!("Contents: \n{:?}", Arc::clone(&contents));
         }
         "count" => {
-            // count_words borrows contents, without taking ownership of the data.
-            // This is done with &contents.
+            // CountWords borrows contents, without taking ownership of the data.
+            // This is done with Arc::clone(&contents) to increment the reference count.
             // The data is therefore accessible to other parts of the program.
             let count_word_fn = CountWords::new(Arc::clone(&contents));
             let count_result = count_word_fn.get_result();
@@ -70,7 +70,7 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
             println!("Count: {count}");
         }
         "common" => {
-            // common_word_finder borrows contents.
+            // CommonWordFinder borrows contents, using Arc::clone to increment the reference count.
             let common_words_fn = CommonWordFinder::new(Arc::clone(&contents));
             let common_words_result = common_words_fn.get_result();
             match common_words_result {
@@ -81,7 +81,7 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
 
         }
         "concorde" => {
-            // concorde_finder borrows contents.
+            // ConcordanceFinder borrows contents, using Arc::clone to increment the reference count.
             let concorde_fn = ConcordanceFinder::new(Arc::clone(&contents), 2, 2);
 
             let concorde_finder_result = concorde_fn.get_result();
@@ -98,23 +98,28 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
             }
         }
         "all" => {
+            // Spawn a thread to count words
             let count_word_fn = CountWords::new(Arc::clone(&contents));
             let count_thread_job = thread::spawn(move || -> Result<TextAnalysisResultType<Option<String>>, TextAnalysisError> {
                 let count_result = count_word_fn.get_result();
                 Ok(count_result)
             });
+
+            // Spawn a thread to find common words
             let common_words_fn = CommonWordFinder::new(Arc::clone(&contents));
             let common_thread_job = thread::spawn(move || -> Result<TextAnalysisResultType<Option<HashMap<String, i32>>>, TextAnalysisError> {
                 let common_result = common_words_fn.get_result();
                 Ok(common_result)
             });
 
+            // Spawn a thread to find concordance
             let concorde_fn = ConcordanceFinder::new(Arc::clone(&contents), 2, 2);
             let concorde_thread_job = thread::spawn(move || -> Result<TextAnalysisResultType<Option<HashMap<String, usize>>>, TextAnalysisError> {
                 let concorde_finder_result = concorde_fn.get_result();
                 Ok(concorde_finder_result)
             });
 
+            // Wait for the count thread to finish and print the result
             match count_thread_job.join().unwrap() {
                 Ok(result) => match result {
                     Ok(Some(count)) => println!("Count: {}", count),
@@ -124,6 +129,7 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
                 Err(_err) => return Err(TextAnalysisError::FailedToJoinThreadError),
             }
 
+            // Wait for the common words thread to finish and print the result
             match common_thread_job.join().unwrap() {
                 Ok(result) => match result {
                     Ok(Some(common)) => println!("Common words: {:?}", common),
@@ -133,6 +139,7 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
                 Err(_err) => return Err(TextAnalysisError::FailedToJoinThreadError)
             }
 
+            // Wait for the concordance thread to finish and print the result
             match concorde_thread_job.join().unwrap() {
                 Ok(result) => match result {
                     Ok(Some(concorde_result)) => {

@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use crate::errors::TextAnalysisError;
 
+// Define a type alias for the result type used in text analysis
 pub type TextAnalysisResultType<T> = Result<T, TextAnalysisError>;
 
+// Define a struct for counting words
 pub struct CountWords {
     pub contents: Arc<String>
 }
@@ -14,6 +16,7 @@ impl CountWords {
     }
 }
 
+// Define a struct for finding common words
 pub struct CommonWordFinder {
     pub contents: Arc<String>
 }
@@ -24,6 +27,7 @@ impl CommonWordFinder {
     }
 }
 
+// Define a struct for finding concordance
 pub struct ConcordanceFinder {
     pub contents: Arc<String>,
     pub min: usize,
@@ -35,13 +39,12 @@ impl ConcordanceFinder {
     }
 }
 
+// Define a trait for text analysis
 pub trait TextAnalysis<T> {
     fn get_result(&self) -> TextAnalysisResultType<T>;
 }
 
-// This function uses a string slice, which is a borrowed reference to a String.
-// It is used to pass data without transferring ownership.
-// String slice is indicated with &str.
+// Implement the TextAnalysis trait for CountWords
 impl TextAnalysis<Option<String>> for CountWords {
     fn get_result(&self) -> TextAnalysisResultType<Option<String>> {
         let words: Vec<&str> = self.contents.split_whitespace().collect();
@@ -55,15 +58,16 @@ impl TextAnalysis<Option<String>> for CountWords {
     }
 }
 
+// Implement the TextAnalysis trait for CommonWordFinder
 impl TextAnalysis<Option<HashMap<String, i32>>> for CommonWordFinder {
     fn get_result(&self) -> TextAnalysisResultType<Option<HashMap<String, i32>>> {
         // Split the contents into words
         let words: Vec<&str> = self.contents.split_whitespace().collect();
 
-        // Creates new hashmap to store the word counts (Format: Word : Count*)
+        // Create a new hashmap to store the word counts
         let mut word_map:HashMap<String, i32> = HashMap::new();
 
-        // Lops trough words in the text file
+        // Loops through the words in the text
         for word in words.iter() {
             let word_string = word.to_string();
             // Check if the word is already in the map
@@ -83,6 +87,7 @@ impl TextAnalysis<Option<HashMap<String, i32>>> for CommonWordFinder {
     }
 }
 
+// Implement the TextAnalysis trait for ConcordanceFinder
 impl TextAnalysis<Option<HashMap<String, usize>>> for ConcordanceFinder {
     fn get_result(&self) -> TextAnalysisResultType<Option<HashMap<String, usize>>> {
         let words: Vec<&str> = self.contents.split_whitespace().collect();
