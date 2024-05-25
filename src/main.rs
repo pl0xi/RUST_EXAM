@@ -100,27 +100,24 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
         "all" => {
             // Spawn a thread to count words
             let count_word_fn = CountWords::new(Arc::clone(&contents));
-            let count_thread_job = thread::spawn(move || -> Result<TextAnalysisResultType<Option<String>>, TextAnalysisError> {
-                let count_result = count_word_fn.get_result();
-                Ok(count_result)
+            let count_thread_job = thread::spawn(move || -> TextAnalysisResultType<Option<String>> {
+                count_word_fn.get_result()
             });
 
             // Spawn a thread to find common words
             let common_words_fn = CommonWordFinder::new(Arc::clone(&contents));
-            let common_thread_job = thread::spawn(move || -> Result<TextAnalysisResultType<Option<HashMap<String, i32>>>, TextAnalysisError> {
-                let common_result = common_words_fn.get_result();
-                Ok(common_result)
+            let common_thread_job = thread::spawn(move || -> TextAnalysisResultType<Option<HashMap<String, i32>>> {
+                common_words_fn.get_result()
             });
 
             // Spawn a thread to find concordance
             let concorde_fn = ConcordanceFinder::new(Arc::clone(&contents), 2, 2);
-            let concorde_thread_job = thread::spawn(move || -> Result<TextAnalysisResultType<Option<HashMap<String, usize>>>, TextAnalysisError> {
-                let concorde_finder_result = concorde_fn.get_result();
-                Ok(concorde_finder_result)
+            let concorde_thread_job = thread::spawn(move || -> TextAnalysisResultType<Option<HashMap<String, usize>>> {
+                concorde_fn.get_result()
             });
 
             // Wait for the count thread to finish and print the result
-            match count_thread_job.join().unwrap() {
+            match count_thread_job.join() {
                 Ok(result) => match result {
                     Ok(Some(count)) => println!("Count: {}", count),
                     Ok(None) => println!("No words found"),
@@ -130,7 +127,7 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
             }
 
             // Wait for the common words thread to finish and print the result
-            match common_thread_job.join().unwrap() {
+            match common_thread_job.join() {
                 Ok(result) => match result {
                     Ok(Some(common)) => println!("Common words: {:?}", common),
                     Ok(None) => println!("No words found"),
@@ -140,7 +137,7 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
             }
 
             // Wait for the concordance thread to finish and print the result
-            match concorde_thread_job.join().unwrap() {
+            match concorde_thread_job.join() {
                 Ok(result) => match result {
                     Ok(Some(concorde_result)) => {
                         for (word, count) in concorde_result.iter() {
