@@ -13,13 +13,13 @@ fn main() {
     println!("Enter pathfile for textfile:");
 
     // File path to the text file
-    let mut file_path = String::new();
+    let mut file_path: String = String::new();
     io::stdin().read_line(&mut file_path).expect("Failed to read line");
 
     // The ownership of the String returned by read_file_contents is transferred to 'contents'
-    match read_file_contents(file_path.trim()) {
-        Ok(contents) => {
-            let contents = Arc::new(contents); // Arc allows multiple threads to share ownership of the contents
+    match read_file_contents(file_path) {
+        Ok(contents)  => {
+            let contents: Arc<String> = Arc::new(contents); // Arc allows multiple threads to share ownership of the contents
             loop {
                 println!("Enter a command (type 'quit' or 'q' to exit):");
                 let mut input = String::new();
@@ -39,27 +39,29 @@ fn main() {
     }
 }
 
-fn read_file_contents(file_path: &str) -> Result<String, TextAnalysisError> {
-    match fs::read_to_string(file_path) {
+// Function for reading the contents of a file
+fn read_file_contents(file_path: String) -> Result<String, TextAnalysisError> {
+    match fs::read_to_string(file_path.trim()) {
         Ok(contents) => Ok(contents),
         Err(_err) => Err(TextAnalysisError::FileReadError)
     }
 }
 
+// Function for performing an action based on user input
 fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalysisError> {
     match input.trim().to_lowercase().as_str() {
         "contents" => {
-            // Read the contents of the file
-            println!("Contents: \n{:?}", Arc::clone(&contents));
+            // Prints the contents in the file
+            println!("Contents: \n{:?}", &contents);
         }
         "count" => {
             // CountWords borrows contents, without taking ownership of the data.
             // This is done with Arc::clone(&contents) to increment the reference count.
             // The data is therefore accessible to other parts of the program.
-            let count_word_fn = CountWords::new(Arc::clone(&contents));
-            let count_result = count_word_fn.get_result();
+            let count_word_fn: CountWords = CountWords::new(Arc::clone(&contents));
+            let count_result:TextAnalysisResultType<Option<String>> = count_word_fn.get_result();
 
-            let count = match count_result {
+            let count: String = match count_result {
                 Ok(Some(count)) => count,
                 Ok(None) => {
                     println!("No words found");
@@ -71,8 +73,8 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
         }
         "common" => {
             // CommonWordFinder borrows contents, using Arc::clone to increment the reference count.
-            let common_words_fn = CommonWordFinder::new(Arc::clone(&contents));
-            let common_words_result = common_words_fn.get_result();
+            let common_words_fn: CommonWordFinder = CommonWordFinder::new(Arc::clone(&contents));
+            let common_words_result: TextAnalysisResultType<Option<HashMap<String, i32>>> = common_words_fn.get_result();
             match common_words_result {
                 Ok(Some(common_words)) => println!("Common Words: {:?}", common_words),
                 Ok(None) =>  println!("No common words found"),
@@ -82,7 +84,7 @@ fn perform_action (input: &str, contents: &Arc<String>) -> Result<(), TextAnalys
         }
         "concorde" => {
             // ConcordanceFinder borrows contents, using Arc::clone to increment the reference count.
-            let concorde_fn = ConcordanceFinder::new(Arc::clone(&contents), 2, 2);
+            let concorde_fn: ConcordanceFinder = ConcordanceFinder::new(Arc::clone(&contents), 2, 2);
 
             let concorde_finder_result = concorde_fn.get_result();
             match concorde_finder_result{
