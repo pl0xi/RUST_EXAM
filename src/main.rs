@@ -5,9 +5,8 @@ use std::{io, thread};
 use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
-use text_analysis::{CountWords, CommonWordFinder, ConcordanceFinder};
-use crate::errors::TextAnalysisError;
-use crate::text_analysis::{TextAnalysis, TextAnalysisResultType};
+use text_analysis::{CountWords, CommonWordFinder, ConcordanceFinder, TextAnalysis, TextAnalysisResultType};
+use errors::TextAnalysisError;
 
 fn main() {
     println!("Enter pathfile for textfile:");
